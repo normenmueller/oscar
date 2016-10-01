@@ -1,6 +1,6 @@
 /*******************************************************************************\
  * Name:              Oracle(c) SQL 11g R2 grammar                             *
- * version:           0.1.0                                                    *
+ * version:           0.1.1                                                    *
  * synopsis:          n/a                                                      *
  * description:       Please see README.md                                     *
  * homepage:          https://github.com/normenmueller/parser-sql              *
@@ -14,24 +14,22 @@ grammar Sql;
 
 // Parser {{{1
 statement
-  : select for_update_clause?
+  : select 
   ;
 
 // Select {{{2
 select
-  : '(' select ')'
-  | simple order_by_clause?
-  | compound order_by_clause?
+  : subselect for_update_clause?
   ;
 
-simple
-  : '(' simple ')'
+subselect
+  : query order_by_clause?
+  ;
+
+query
+  : '(' query ')'
+  | query (UNION ALL?|INTERSECT|MINUS) query
   | factoring_clause? select_clause from_clause where_clause? hierarchical_query_clause? group_by_clause? model_clause? 
-  ;
-
-compound
-  : '(' compound ')'
-  | (simple|'('compound')') ((UNION ALL?|INTERSECT|MINUS) (simple|'('compound')'))+
   ;
 
 // Subquery factoring clause {{{3
@@ -40,9 +38,11 @@ factoring_clause
   ;
 
 factoring_element
-  : name["simple"] ('(' column_alias (',' column_alias)* ')')? AS '(' select ')' search_clause? cycle_clause?
+  : name '(' column_alias (',' column_alias)* ')' AS '(' subselect ')' search_clause? cycle_clause?
+  | name AS '(' subselect ')' search_clause? cycle_clause?
   ;
 
+// Search clause {{{4
 search_clause
   : SEARCH (DEPTH|BREADTH) FIRST BY search_elements SET column_alias
   ;
@@ -55,6 +55,7 @@ search_element
   : column_alias (ASC|DESC)? (NULLS (FIRST|LAST))?
   ;
 
+// Cycle clause {{{4
 cycle_clause
   : CYCLE cycle_elements SET column_alias TO expression DEFAULT expression
   ;
@@ -78,7 +79,7 @@ select_elements
 
 select_element
   : expression (AS? column_alias)?
-  | '(' select ')' (AS? column_alias)?
+  | '(' subselect ')' (AS? column_alias)?
   ;
 
 // From clause {{{3
@@ -97,34 +98,14 @@ from_element
   ;
 
 // Table reference {{{4
-// v1 {{{5
-//table
-//  : (ONLY '(' query_table_expression ')'|query_table_expression (pivot_clause|unpivot_clause)?) flashback_query_clause? table_alias?
-//  ;
-//
-//query_table_expression
-//  : (name["simple"]|(schema '.')? table_alias (partition_extension_clause|'@' dblink)) sample_clause?
-//  | '(' subquery (WITH (READ ONLY|CHECK OPTION) (CONSTRAINT name["simple"])?)? ')'
-//  | table_collection_expression
-//  ;
-// v2 {{{5
-//table
-//  : ( (name["simple"]|(schema '.')? table_alias (partition_extension_clause|'@' dblink)) sample_clause?
-//    | '(' select (WITH (READ ONLY|CHECK OPTION) (CONSTRAINT name["simple"])?)? ')'
-//    | table_collection_expression
-//    ) (pivot_clause|unpivot_clause)? flashback_query_clause? table_alias?
-//  ;
-// v3 {{{5
 table
-  : ONLY '(' 
-    ( name["simple"]
-    | (schema '.')? name["simple"] (partition_extension_clause|'@' dblink)? sample_clause?
-    | '(' select (WITH (READ ONLY|CHECK OPTION) (CONSTRAINT name["simple"])?)? ')'
+  : ONLY '(' (
+      '(' subselect (WITH (READ ONLY|CHECK OPTION) (CONSTRAINT name)?)? ')'
+    | ((schema '.')? name) (partition_extension_clause|'@' dblink)? sample_clause?
     | table_collection_expression
     ) ')' flashback_query_clause? table_alias?
-  | ( name["simple"]
-    | (schema '.')? name["simple"] (partition_extension_clause|'@' dblink)? sample_clause?
-    | '(' select (WITH (READ ONLY|CHECK OPTION) (CONSTRAINT name["simple"])?)? ')'
+  | ( '(' subselect (WITH (READ ONLY|CHECK OPTION) (CONSTRAINT name)?)? ')'
+    | ((schema '.')? name) (partition_extension_clause|'@' dblink)? sample_clause?
     | table_collection_expression
     ) (pivot_clause|unpivot_clause)? flashback_query_clause? table_alias?
   ;
@@ -147,7 +128,7 @@ pivot_for_clause
   ;
 
 pivot_in_clause
-  : IN '(' select ')'
+  : IN '(' subselect ')'
   | IN '(' expression (AS? column_alias)? (',' expression (AS? column_alias)?)* ')'
   ;
 
@@ -173,7 +154,7 @@ partition_extension_clause
   ;
 
 table_collection_expression
-  : (TABLE|THE) '(' (select|expression) ')' ('(' '+' ')')?
+  : (TABLE|THE) '(' (subselect|expression) ')' ('(' '+' ')')?
   ;
 
 // Join clause {{{4
@@ -220,11 +201,13 @@ grouping_sets_clause
 
 // Model clause {{{3
 model_clause
-  : MODEL cell_reference_options? return_rows_clause? reference_model* main_model
+  : MODEL cell_reference_options? return_rows_clause? reference_model*? main_model
   ;
 
 cell_reference_options
-  : ((IGNORE|KEEP) NAV) (UNIQUE (DIMENSION|SINGLE REFERENCE))?
+  : (IGNORE|KEEP) NAV
+  | UNIQUE (DIMENSION|SINGLE REFERENCE)
+  | (IGNORE|KEEP) NAV UNIQUE (DIMENSION|SINGLE REFERENCE)
   ;
 
 return_rows_clause
@@ -232,40 +215,66 @@ return_rows_clause
   ;
 
 reference_model
-  : REFERENCE name["simple"] ON '(' select ')' model_column_clauses cell_reference_options?
+  : REFERENCE name ON '(' subselect ')' model_column_clauses cell_reference_options?
   ;
 
+// Main model clause {{{4
 main_model
-  : (MAIN name["simple"])? model_column_clauses cell_reference_options? model_rules_clause?
+  : (MAIN name)? model_column_clauses cell_reference_options? model_rules_clause?
   ;
 
+// Model column clauses {{{5
 model_column_clauses
-  : (PARTITION BY '(' expression column_alias? (',' expression column_alias?)* ')')? DIMENSION BY '(' expression column_alias? (',' expression column_alias?)* ')' MEASURES '(' expression column_alias? (',' expression column_alias?)* ')'
+  : model_partition_clause? model_dimension_clause model_measures_clause
   ;
 
+model_partition_clause
+  : PARTITION BY '(' expression column_alias? (',' expression column_alias?)* ')'
+  ;
+
+model_dimension_clause
+  : DIMENSION BY '(' expression column_alias? (',' expression column_alias?)* ')'
+  ;
+
+model_measures_clause
+  : MEASURES '(' expression column_alias? (',' expression column_alias?)* ')'
+  ;
+
+// Model rules clause {{{5
 model_rules_clause
-  : RULES ((UPDATE|UPSERT ALL?))? ((AUTOMATIC|SEQUENTIAL) ORDER)? model_iterate_clause? '(' ((UPDATE|UPSERT ALL?)? cell_assignment order_by_clause? '=' expression (',' (UPDATE|UPSERT ALL?)? cell_assignment order_by_clause? '=' expression)*)? ')'
+  : RULES ((UPDATE|UPSERT ALL?))? ((AUTOMATIC|SEQUENTIAL) ORDER)? model_iterate_clause? '(' model_rule_clause (',' model_rule_clause)* ')'
   ;
 
 model_iterate_clause
-  : ITERATE '(' numeric ')' (UNTIL '(' condition ')')?
+  : ITERATE '(' expression ')' (UNTIL '(' condition ')')?
+  ;
+
+model_rule_clause
+  : (UPDATE|UPSERT ALL?)? (cell_assignment order_by_clause? '=' expression) 
   ;
 
 cell_assignment
-  : column '[' (expression|condition|single_column_for_loop) (',' (expression|condition|single_column_for_loop))* ']'
+  : column '[' single_column_for_loop (',' single_column_for_loop)* ']'
   | column '[' multi_column_for_loop ']'
+  | column '[' (condition|expression) (',' (condition|expression))* ']'
   ;
 
 single_column_for_loop
-  : FOR column (IN '(' select|expression (',' select|expression)* ')'|(LIKE expression)? FROM expression TO expression (INCREMENT|DECREMENT) expression)
+  : FOR column IN '(' (subselect|expression) (',' (subselect|expression))* ')'
+  | FOR column (LIKE expression)? FROM expression TO expression (INCREMENT|DECREMENT) expression
   ;
 
 multi_column_for_loop
-  : FOR '(' column (',' column)* ')' IN '(' select|expression (',' select|expression)* ')'
+  : FOR '(' column (',' column)* ')' IN '(' (subselect|(('(' expression (',' expression)*')') (',' ('(' expression (',' expression)*')')*))) ')'
   ;
 
 for_update_clause
-  : FOR UPDATE (OF column (',' column)*)? (NOWAIT|WAIT numeric|SKIP_ LOCKED)?
+  : FOR UPDATE (OF column (',' column)*)? (NOWAIT|WAIT expression|SKIP_ LOCKED)?
+  ;
+
+// Order by clause {{{3
+order_by_clause
+  : ORDER SIBLINGS? BY expression (ASC|DESC)? (NULLS (FIRST|LAST))? (',' expression (ASC|DESC)? (NULLS (FIRST|LAST))?)*
   ;
 
 // Datatypes {{{2
@@ -350,7 +359,7 @@ special_datatype
 expression
   : PRIOR expression
   | CONNECT_BY_ROOT expression
-  | CURSOR '(' select ')'
+  | CURSOR '(' subselect ')'
   | NEW (schema '.')? type '(' parameters? ')'
   | case_expression
   // TODO | object_access_expression
@@ -373,20 +382,20 @@ expression
 
 // Values {{{3
 value
-  : string["any"]
+  : ANY
+  | DBTIMEZONE
+  | MAXVALUE | MINVALUE
+  | NULL
+  | SESSIONTIMEZONE | STANDALONE (YES|NO VALUE?)
+  //| '(' subselect ')'
+  | string["any"]
   | ('+' | '-')? numeric 
   | datetime
   | interval
   | sequence
   | ('-')? cell_assignment
-  | ('-')? column
   | ('-')? function
-  | '('select')'
-  | ANY
-  | DBTIMEZONE
-  | MAXVALUE | MINVALUE
-  | NULL
-  | SESSIONTIMEZONE | STANDALONE (YES|NO VALUE?)
+  | ('-')? column 
   ;
 
 // String {{{4
@@ -417,39 +426,29 @@ interval
 
 // Sequence reference {{{4
 sequence
-  : (schema '.')? name["simple"] '.' (CURRVAL|NEXTVAL) ('@' dblink)?
+  : (schema '.')? name '.' (CURRVAL|NEXTVAL) ('@' dblink)?
   ;
 
 // Column reference {{{4
 column
-//: ((schema '.')? table_alias '.')? name["simple"]
-  : ((schema '.')? table_alias '.')? name["any"] //(~'(')
+  : ((schema '.')? table_alias '.')? name
   ;
 
 // Function {{{4
-function
-  : name["function"] ('(' parameters? ')')? first_clause? respect_clause? keep_clause? within_clause? over_clause?
-  //: name["function"] ('(' parameters? ')' ('.' (method|function))?)? first_clause? respect_clause? keep_clause? within_clause? over_clause?
+function 
+  : (name ('@' dblink '.')? '(' parameters? ')') first_clause? respect_clause? keep_clause? within_clause? over_clause?
   ;
 
+// Function parameters {{{5
 parameters
-  : (name["any"] '=>')? parameter (',' (name["any"] '=>')? parameter)* 
-  ;
+  : (DISTINCT|UNIQUE|ALL)? (name '=>')? parameter (',' (name '=>')? parameter)* ;
 
 parameter
   : (YEAR|MONTH|DAY|HOUR|MINUTE|SECOND|TIMEZONE_HOUR|TIMEZONE_MINUTE|TIMEZONE_REGION|TIMEZONE_ABBR|(LEADING|TRAILING|BOTH)? expression) FROM expression
   | (NAME|EVALNAME) expression
   | (DOCUMENT|CONTENT) expression WELLFORMED?
   | VERSION (NO VALUE|expression)
-  | (DISTINCT|UNIQUE|ALL)? expression (AS (datatype|alias)|order_by_clause|respect_clause|passing_clause|passing_clause? returning_clause|cost_matrix_clause? using_clause)?
-  ;
-
-first_clause
-  : FROM (FIRST|LAST)
-  ;
-
-respect_clause
-  : (RESPECT | IGNORE) NULLS
+  | expression (AS (datatype|alias)|order_by_clause|respect_clause|passing_clause|passing_clause? returning_clause|cost_matrix_clause? using_clause)?
   ;
 
 passing_clause
@@ -469,14 +468,23 @@ using_clause
   : USING (CHAR_CS | NCHAR_CS | ((schema '.')? table_alias '.')? '*' | expression (AS alias)?)
   ;
 
-within_clause
-  : WITHIN GROUP '(' order_by_clause ')'
+// Function restrictions {{{5
+first_clause
+  : FROM (FIRST|LAST)
+  ;
+
+respect_clause
+  : (RESPECT | IGNORE) NULLS
   ;
   
 keep_clause
-  : KEEP '(' DENSE_RANK (FIRST|LAST) order_by_clause ')' //(OVER '(' analytic_clause? ')')?
+  : KEEP '(' DENSE_RANK (FIRST|LAST) order_by_clause ')'
   ;
   
+within_clause
+  : WITHIN GROUP '(' order_by_clause ')'
+  ;
+
 over_clause
   : OVER '(' analytic_clause? ')'
   ;
@@ -496,25 +504,22 @@ windowing_clause
 
 // Case {{{3
 case_expression
-  : CASE expression (WHEN (comparison|value) THEN (select|expression))+ (ELSE (select|expression))? END
-  // TODO re-assess                   ^^^^^
-  // TDOD Here `value` is primarily used for for
-  // TODO `case ... when (select ...) then ...`
-  | CASE (WHEN condition THEN ('('select')'|expression))+ (ELSE ('('select')'|expression))? END
+  : CASE expression (WHEN (comparison|'('subselect')') THEN (expression|'('subselect')'))+ (ELSE (expression|'('subselect')'))? END
+  | CASE (WHEN condition THEN (expression|'('subselect')'))+ (ELSE (expression|'('subselect')'))? END
   ;
 
 // Conditions {{{2
-// TODO Re-assess: always `('('select')'|expression)` rather than just `expression`?
+// TODO Re-assess: always `('(' subselect ')'|expression)` rather than just `expression`?
 condition
   : '(' condition ')'
   | LNNVL '(' condition ')'
-  | EXISTS '(' select ')'
+  | EXISTS '(' subselect ')'
   | REGEXP_LIKE '(' expression ',' expression (',' expression)? ')'
   | comparison
   | expression NOT? BETWEEN expression AND expression
-  | expression NOT? IN ('(' select ')'| expression)
+  | expression NOT? IN ('(' subselect ')'| expression)
   | expression NOT? (MEMBER|SUBMULTISET) OF? table_alias
-  | expression IS NOT? (ANY|NAN|INFINITE|NULL|PRESENT|ASET|EMPTY|/*OF datatype*/)
+  | ('(' subselect ')'|expression) IS NOT? (ANY|NAN|INFINITE|NULL|PRESENT|ASET|EMPTY|/*OF datatype*/)
   | expression NOT? (LIKE|LIKEC|LIKE2|LIKE4) expression (ESCAPE expression)?
   | NOT condition
   | condition AND condition
@@ -524,89 +529,36 @@ condition
 // Comparisons {{{3
 comparison
   : '(' comparison ')'
-  | expression ('='|'!='|'^='|'<>'|'>'|'<'|'>='|'<=') (ANY|SOME|ALL)? '('(select|expression)')' 
+  | expression ('='|'!='|'^='|'<>'|'>'|'<'|'>='|'<=') (ANY|SOME|ALL)? '('(expression|subselect)')' 
   | expression ('='|'!='|'^='|'<>'|'>'|'<'|'>='|'<=') expression 
   ;
 
 // Commons {{{2
-query_partition_clause
-  : PARTITION BY expression (',' expression)*
-  | PARTITION BY '(' expression (',' expression)* ')'
-  ;
-
-order_by_clause
-  : ORDER SIBLINGS? BY expression (ASC|DESC)? (NULLS (FIRST|LAST))? (',' expression (ASC|DESC)? (NULLS (FIRST|LAST))?)*
-  ;
-
-//alias        : ID ;
-alias        : name["any"] ;
-//table_alias  : ID ;
-table_alias  : name["any"] ;
-//column_alias : ID ;
-column_alias : name["any"] ;
-
-attribute    : ID ;
-connection   : ID ;
-database     : ID ;
-domain       : ID ;
-model        : ID ;
-object       : ID ;
-package_name : ID ;
-schema       : ID ;
-type         : ID ;
-
 dblink
   : database ('.' domain)* ('@' connection)?
   ;
 
-// Names {{{3
-name[String k]
-  : {$k.equals("any") || $k.equals("function")}?
-      ABS | ACOS | ASIN | ATAN | ATAN2 | ASCII | ADD_MONTHS | ASCIISTR | APPENDCHILDXML | AVG
-    | BITAND | BIN_TO_NUM | BFILENAME
-    | CEIL | COS | COSH | CHR | CONCAT | CURRENT_DATE | CURRENT_TIMESTAMP | CAST | CHARTOROWID | COMPOSE | CONVERT | CARDINALITY | COLLECT | CLUSTER_ID | CLUSTER_PROBABILITY | CLUSTER_SET | COALESCE | CORR_S | CORR_K | COUNT | COVAR_POP | COVAR_SAMP | CUME_DIST | COLUMN_VALUE
-    | DBTIMEZONE | DECOMPOSE | DELETEXML | DEPTH | DECODE | DUMP | DENSE_RANK 
-    | EXP | EXTRACT | EMPTY_BLOB | EMPTY_CLOB | EXISTSNODE | EXTRACTVALUE | EQUALS_PATH
-    | FLOOR | FROM_TZ | FEATURE_ID | FEATURE_SET | FEATURE_VALUE | FIRST | FIRST_VALUE
-    | GREATEST | GROUP_ID | GROUPING | GROUPING_ID 
-    | HEXTORAW 
-    | INITCAP | INSTR | INSTRB | INSTRC | INSTR2 | INSTR4 | INSERTCHILDXML | INSERTCHILDXMLAFTER | INSERTCHILDXMLBEFORE | INSERTXMLAFTER | INSERTXMLBEFORE 
-    | LAG | LN | LOG | LOWER | LPAD | LTRIM | LENGTH | LENGTHB | LENGTHC | LENGTH2 | LENGTH4 | LAST_DAY | LOCALTIMESTAMP | LEAST | LAST | LISTAGG | LEAD
-    | MOD | MONTHS_BETWEEN | MAX | MEDIAN | MIN
-    | NANVL | NCHR | NLS_INITCAP | NLS_LOWER | NLS_UPPER | NLSSORT | NLS_CHARSET_DECL_LEN | NLS_CHARSET_ID | NLS_CHARSET_NAME | NEW_TIME | NEXT_DAY | NUMTODSINTERVAL | NUMTOYMINTERVAL | NUMTODSINTERVAL | NUMTOYMINTERVAL | NANVL | NULLIF | NVL| NVL2 | NTH_VALUE
-    | ORA_DST_AFFECTED | ORA_DST_CONVERT | ORA_DST_ERROR | ORA_HASH 
-    | POWER | POWERMULTISET | POWERMULTISET_BY_CARDINALITY | PREDICTION | PREDICTION_BOUNDS | PREDICTION_COST | PREDICTION_DETAILS | PREDICTION_PROBABILITY | PREDICTION_SET | PATH | PERCENT_RANK | PERCENTILE_CONT | PERCENTILE_DISC | RANK 
-    | REMAINDER | ROUND | REGEXP_REPLACE | REGEXP_SUBSTR | REPLACE | RPAD | RTRIM | REGEXP_COUNT | REGEXP_INSTR | RAWTOHEX | RAWTONHEX | ROWIDTOCHAR | ROWIDTONCHAR | REGR_SLOPE | REGR_INTERCEPT | REGR_COUNT | REGR_R2 | REGR_AVGX | REGR_AVGY | REGR_SXX | REGR_SYY | REGR_SXY | ROW_NUMBER | RATIO_TO_REPORT | REVERSE
-    | SIGN | SIN | SINH | SQRT | SOUNDEX | SUBSTR| SUBSTRB | SUBSTRC | SUBSTR2 | SUBSTR4 | SESSIONTIMEZONE | SYS_EXTRACT_UTC | SYSDATE | SYSTIMESTAMP | SCN_TO_TIMESTAMP | SET | SYS_CONNECT_BY_PATH | SYS_DBURIGEN | SYS_XMLAGG | SYS_XMLGEN | SYS_CONTEXT | SYS_GUID | SYS_TYPEID | STATS_BINOMIAL_TEST | STATS_CROSSTAB | STATS_F_TEST | STATS_KS_TEST | STATS_MODE | STATS_MW_TEST | STATS_ONE_WAY_ANOVA | STATS_T_TEST_ONE | STATS_T_TEST_PAIRED | STATS_T_TEST_INDEP | STATS_T_TEST_INDEPU | STATS_WSR_TEST | STDDEV | STDDEV_POP | STDDEV_SAMP | SUM | SYS_XMLAGG | SYS_OP_MAP_NONNULL
-    | TAN | TANH | TRUNC | TRANSLATE | TRIM | TO_DSINTERVAL | TO_TIMESTAMP_TZ | TO_YMINTERVAL | TZ_OFFSET | TIMESTAMP_TO_SCN | TO_BINARY_DOUBLE | TO_BINARY_FLOAT | TO_BLOB | TO_CHAR | TO_CLOB | TO_DATE | TO_DSINTERVAL | TO_LOB | TO_MULTI_BYTE | TO_NCHAR | TO_NCLOB | TO_NUMBER | TO_SINGLE_BYTE | TO_TIMESTAMP | TO_TIMESTAMP_TZ | TO_YMINTERVAL | TREAT | TABLE
-    | UPPER | UNISTR | UPDATEXML | UID | USER | USERENV | UNDER_PATH
-    | VSIZE | VAR_POP | VAR_SAMP | VARIANCE | VALUE
-    | WIDTH_BUCKET | WM_CONCAT
-    | XMLAGG | XMLCAST | XMLCDATA | XMLCOLATTVAL | XMLCOMMENT | XMLCONCAT | XMLDIFF | XMLELEMENT | XMLEXISTS | XMLFOREST | XMLISVALID | XMLPARSE | XMLPATCH | XMLPI | XMLQUERY | XMLROOT | XMLSEQUENCE | XMLSERIALIZE | XMLTABLE | XMLTRANSFORM | XMLAGG | XMLTYPE
-    // user defined
-    | ((schema '.')? package_name '.')? ID ('@' dblink '.')? 
-  | {$k.equals("any") || $k.equals("simple")}?
-      ID
-    // Special, i.e., although reserved, allowed for alias, column, or package name
-    // TODO Re-assess: Actually at this point we want to accept 
-    //                 `ID`, Pseudo columns, and all tokens defined
-    //                 within the Lexer!
-    | DIMENSION | DOCUMENT 
-    | EMPTY
-    | GROUP_ID 
-    | INT 
-    | MONTH
-    | NAME 
-    | RULES
-    | SYS
-    | ZONE
-    // Pseudocolumns
-    | CONNECT_BY_ISCYCLE | CONNECT_BY_ISLEAF
-    | LEVEL
-    | OBJECT_ID | OBJECT_VALUE | ORA_ROWSCN
-    | ROWID | ROWNUM
-    | '*'
+query_partition_clause
+  : PARTITION BY '(' expression (',' expression)* ')'
+  | PARTITION BY expression (',' expression)*
   ;
+
+alias        : name ;
+table_alias  : name ;
+column_alias : name ;
+attribute    : name ;
+connection   : name ;
+database     : name ;
+domain       : name ;
+model        : name ;
+object       : name ;
+pkg          : ID | . ;
+schema       : ID | . ;
+type         : name ;
+name
+  : '*'
+  | ((schema '.')? (pkg '.'))? ID 
+  | . ; 
 
 // Lexer {{{1
 // Keywords {{{2
@@ -1020,7 +972,6 @@ TABLE                        : T A B L E;
 TAN                          : T A N;
 TANH                         : T A N H;
 THE                          : T H E;
-//TIMEZONE                     : T I M E SPACES Z O N E {_text = "TIME ZONE";}; // XXX
 TIME                         : T I M E;
 TIMESTAMP                    : T I M E S T A M P;
 TIMESTAMP_TO_SCN             : T I M E S T A M P '_' T O '_' S C N;
@@ -1157,14 +1108,11 @@ INTEGER_LITERAL
   ;
 
 FLOAT_LITERAL
-  //: INTEGER_LITERAL? '.' INTEGER_LITERAL ([dD] | [fF])?
   : INTEGER_LITERAL? '.' [0-9]+ ([dD] | [fF])?
   ;
 
 SCIENTIFIC_LITERAL
-  : (INTEGER_LITERAL? '.' [0-9]+ | INTEGER_LITERAL)
-    ([eE] ('+'|'-')? (INTEGER_LITERAL? '.' [0-9]+ | INTEGER_LITERAL))?
-    ([dD] | [fF])?
+  : (INTEGER_LITERAL? '.' [0-9]+ | INTEGER_LITERAL) ([eE] ('+'|'-')? (INTEGER_LITERAL? '.' [0-9]+ | INTEGER_LITERAL))? ([dD] | [fF])?
   ;
 
 // Quoted and nonquoted identifier
@@ -1173,32 +1121,32 @@ ID
   | '"' .+? '"'
   ;
 
-fragment NEWLINE                   : '\r'? '\n';
-fragment LETTER                    : [a-zA-Z\u0080-\u00FF_$#] ;
-fragment DIGIT                     : [0-9] ; 
-fragment A                         : [aA] ;
-fragment B                         : [bB] ;
-fragment C                         : [cC] ;
-fragment D                         : [dD] ;
-fragment E                         : [eE] ;
-fragment F                         : [fF] ;
-fragment G                         : [gG] ;
-fragment H                         : [hH] ;
-fragment I                         : [iI] ;
-fragment J                         : [jJ] ;
-fragment K                         : [kK] ;
-fragment L                         : [lL] ;
-fragment M                         : [mM] ;
-fragment N                         : [nN] ;
-fragment O                         : [oO] ;
-fragment P                         : [pP] ;
-fragment Q                         : [qQ] ;
-fragment R                         : [rR] ;
-fragment S                         : [sS] ;
-fragment T                         : [tT] ;
-fragment U                         : [uU] ;
-fragment V                         : [vV] ;
-fragment W                         : [wW] ;
-fragment X                         : [xX] ;
-fragment Y                         : [yY] ;
-fragment Z                         : [zZ] ;
+fragment NEWLINE : '\r'? '\n';
+fragment LETTER  : [a-zA-Z\u0080-\u00FF_$#] ;
+fragment DIGIT   : [0-9] ; 
+fragment A       : [aA] ;
+fragment B       : [bB] ;
+fragment C       : [cC] ;
+fragment D       : [dD] ;
+fragment E       : [eE] ;
+fragment F       : [fF] ;
+fragment G       : [gG] ;
+fragment H       : [hH] ;
+fragment I       : [iI] ;
+fragment J       : [jJ] ;
+fragment K       : [kK] ;
+fragment L       : [lL] ;
+fragment M       : [mM] ;
+fragment N       : [nN] ;
+fragment O       : [oO] ;
+fragment P       : [pP] ;
+fragment Q       : [qQ] ;
+fragment R       : [rR] ;
+fragment S       : [sS] ;
+fragment T       : [tT] ;
+fragment U       : [uU] ;
+fragment V       : [vV] ;
+fragment W       : [wW] ;
+fragment X       : [xX] ;
+fragment Y       : [yY] ;
+fragment Z       : [zZ] ;
