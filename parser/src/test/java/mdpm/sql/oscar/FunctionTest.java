@@ -139,21 +139,21 @@ public class FunctionTest extends SqlParserTest {
   public void parseFunctions19() {
     SqlParser p = parse("AVG(DISTINCT salary)");
     ParseTree t = p.expression();
-    assertEquals("(expression (value (function (name AVG) ( (parameters (parameter DISTINCT (expression (value (column (name salary)))))) ))))", t.toStringTree(p));
+    assertEquals("(expression (value (function (name AVG) ( (parameters DISTINCT (parameter (expression (value (column (name salary)))))) ))))", t.toStringTree(p));
   }
 
   @Test
   public void parseFunctions20() {
     SqlParser p = parse("AVG(UNIQUE salary)");
     ParseTree t = p.expression();
-    assertEquals("(expression (value (function (name AVG) ( (parameters (parameter UNIQUE (expression (value (column (name salary)))))) ))))", t.toStringTree(p));
+    assertEquals("(expression (value (function (name AVG) ( (parameters UNIQUE (parameter (expression (value (column (name salary)))))) ))))", t.toStringTree(p));
   }
 
   @Test
   public void parseFunctions21() {
     SqlParser p = parse("AVG(ALL salary)");
     ParseTree t = p.expression();
-    assertEquals("(expression (value (function (name AVG) ( (parameters (parameter ALL (expression (value (column (name salary)))))) ))))", t.toStringTree(p));
+    assertEquals("(expression (value (function (name AVG) ( (parameters ALL (parameter (expression (value (column (name salary)))))) ))))", t.toStringTree(p));
   }
 
   @Test
@@ -356,14 +356,14 @@ public class FunctionTest extends SqlParserTest {
   public void parseFunctions50() {
     SqlParser p = parse("TABLE(DBMS_DATA_MINING.GET_MODEL_DETAILS_KM('km_sh_clus_sample'))");
     ParseTree t = p.expression();
-    assertEquals("(expression (value (function (name TABLE) ( (parameters (parameter (expression (value (function (name (package_name DBMS_DATA_MINING) . GET_MODEL_DETAILS_KM) ( (parameters (parameter (expression (value (string 'km_sh_clus_sample'))))) )))))) ))))", t.toStringTree(p));
+    assertEquals("(expression (value (function (name TABLE) ( (parameters (parameter (expression (value (function (name (pkg DBMS_DATA_MINING) . GET_MODEL_DETAILS_KM) ( (parameters (parameter (expression (value (string 'km_sh_clus_sample'))))) )))))) ))))", t.toStringTree(p));
   }
 
   @Test
   public void parseFunctions51() {
     SqlParser p = parse("CAST(COLLECT(p.f(aname, op, TO_CHAR(val), support, confidence)) AS Cattrs)");
     ParseTree t = p.expression();
-    assertEquals("(expression (value (function (name CAST) ( (parameters (parameter (expression (value (function (name COLLECT) ( (parameters (parameter (expression (value (function (name (package_name p) . f) ( (parameters (parameter (expression (value (column (name aname))))) , (parameter (expression (value (column (name op))))) , (parameter (expression (value (function (name TO_CHAR) ( (parameters (parameter (expression (value (column (name val)))))) ))))) , (parameter (expression (value (column (name support))))) , (parameter (expression (value (column (name confidence)))))) )))))) )))) AS (alias (name Cattrs)))) ))))", t.toStringTree(p));
+    assertEquals("(expression (value (function (name CAST) ( (parameters (parameter (expression (value (function (name COLLECT) ( (parameters (parameter (expression (value (function (name (pkg p) . f) ( (parameters (parameter (expression (value (column (name aname))))) , (parameter (expression (value (column (name op))))) , (parameter (expression (value (function (name TO_CHAR) ( (parameters (parameter (expression (value (column (name val)))))) ))))) , (parameter (expression (value (column (name support))))) , (parameter (expression (value (column (name confidence)))))) )))))) )))) AS (alias (name Cattrs)))) ))))", t.toStringTree(p));
   }
 
   @Test
@@ -461,7 +461,7 @@ public class FunctionTest extends SqlParserTest {
   public void parseFunctions65() {
     SqlParser p = parse("COUNT(DISTINCT a)");
     ParseTree t = p.expression();
-    assertEquals("(expression (value (function (name COUNT) ( (parameters (parameter DISTINCT (expression (value (column (name a)))))) ))))", t.toStringTree(p));
+    assertEquals("(expression (value (function (name COUNT) ( (parameters DISTINCT (parameter (expression (value (column (name a)))))) ))))", t.toStringTree(p));
   }
     
   @Test

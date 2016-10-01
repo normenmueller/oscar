@@ -169,7 +169,7 @@ public class ConditionalTest extends SqlParserTest {
     // original: SqlParser p = parse("         cust_address_typ('8768 N State Rd 37', 47404, 'Bloomington', 'IN', 'US') MEMBER OF cust_address_ntab");
                  SqlParser p = parse("aPackage.cust_address_typ('8768 N State Rd 37', 47404, 'Bloomington', 'IN', 'US') MEMBER OF cust_address_ntab");
     ParseTree t = p.condition();
-    assertEquals("(condition (expression (value (function (name (package_name aPackage) . cust_address_typ) ( (parameters (parameter (expression (value (string '8768 N State Rd 37')))) , (parameter (expression (value (numeric 47404)))) , (parameter (expression (value (string 'Bloomington')))) , (parameter (expression (value (string 'IN')))) , (parameter (expression (value (string 'US'))))) )))) MEMBER OF (table_alias (name cust_address_ntab)))", t.toStringTree(p));
+    assertEquals("(condition (expression (value (function (name (pkg aPackage) . cust_address_typ) ( (parameters (parameter (expression (value (string '8768 N State Rd 37')))) , (parameter (expression (value (numeric 47404)))) , (parameter (expression (value (string 'Bloomington')))) , (parameter (expression (value (string 'IN')))) , (parameter (expression (value (string 'US'))))) )))) MEMBER OF (table_alias (name cust_address_ntab)))", t.toStringTree(p));
   }
 
   @Test
@@ -204,7 +204,7 @@ public class ConditionalTest extends SqlParserTest {
   public void parseConditional28() {
     SqlParser p = parse("pty_sk = prim_pty_sk and nvl(PTY_STUS_INDCTR,' ') != 'D' and exists (select * from ma_i_pty /* TEMPL SQF_TGT */ where scndy_pty_sk = pty_sk and PTY_SRC_NME = 'BB_GUAR')");
     ParseTree t = p.condition();
-    assertEquals("(condition (condition (condition (comparison (expression (value (column (name pty_sk)))) = (expression (value (column (name prim_pty_sk)))))) and (condition (comparison (expression (value (function (name nvl) ( (parameters (parameter (expression (value (column (name PTY_STUS_INDCTR))))) , (parameter (expression (value (string ' '))))) )))) != (expression (value (string 'D')))))) and (condition exists ( (select (simple (select_clause select (select_elements (select_element (expression (value (column (name *))))))) (from_clause from (from_elements (from_element (table (name ma_i_pty))))) (where_clause where (condition (condition (comparison (expression (value (column (name scndy_pty_sk)))) = (expression (value (column (name pty_sk)))))) and (condition (comparison (expression (value (column (name PTY_SRC_NME)))) = (expression (value (string 'BB_GUAR'))))))))) )))", t.toStringTree(p));
+    assertEquals("(condition (condition (condition (comparison (expression (value (column (name pty_sk)))) = (expression (value (column (name prim_pty_sk)))))) and (condition (comparison (expression (value (function (name nvl) ( (parameters (parameter (expression (value (column (name PTY_STUS_INDCTR))))) , (parameter (expression (value (string ' '))))) )))) != (expression (value (string 'D')))))) and (condition exists ( (query (select_clause select (select_elements (select_element (expression (value (column (name *))))))) (from_clause from (from_elements (from_element (table (name ma_i_pty))))) (where_clause where (condition (condition (comparison (expression (value (column (name scndy_pty_sk)))) = (expression (value (column (name pty_sk)))))) and (condition (comparison (expression (value (column (name PTY_SRC_NME)))) = (expression (value (string 'BB_GUAR')))))))) )))", t.toStringTree(p));
   }
  
 }

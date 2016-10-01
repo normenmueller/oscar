@@ -13,22 +13,21 @@ public class SelectTest extends SqlParserTest {
   public void parseSelect01() {
     SqlParser p = parse("SELECT 2 * 1.23, 3 * '2,34' FROM DUAL");
     ParseTree t = p.select();
-    //assertEquals("(select (subquery (query (select_clause SELECT (select_elements (select_element (expression (expression (value (numeric 2))) * (expression (value (numeric 1.23))))) , (select_element (expression (expression (value (numeric 3))) * (expression (value (string '2,34'))))))) (from_clause FROM (from_elements (from_element (table (query_table_expression (name DUAL)))))))))", t.toStringTree(p));
-    assertEquals("(select (simple (select_clause SELECT (select_elements (select_element (expression (expression (value (numeric 2))) * (expression (value (numeric 1.23))))) , (select_element (expression (expression (value (numeric 3))) * (expression (value (string '2,34'))))))) (from_clause FROM (from_elements (from_element (table (name DUAL)))))))", t.toStringTree(p));
+    assertEquals("(select (query (select_clause SELECT (select_elements (select_element (expression (expression (value (numeric 2))) * (expression (value (numeric 1.23))))) , (select_element (expression (expression (value (numeric 3))) * (expression (value (string '2,34'))))))) (from_clause FROM (from_elements (from_element (table (name DUAL)))))))", t.toStringTree(p));
   }
   
   @Test
   public void parseSelect02() {
     SqlParser p = parse("SELECT COUNT(*) FROM employees WHERE TO_BINARY_FLOAT(commission_pct) != BINARY_FLOAT_NAN");
     ParseTree t = p.select();
-    assertEquals("(select (simple (select_clause SELECT (select_elements (select_element (expression (value (function (name COUNT) ( (parameters (parameter (expression (value (column (name *)))))) ))))))) (from_clause FROM (from_elements (from_element (table (name employees))))) (where_clause WHERE (condition (comparison (expression (value (function (name TO_BINARY_FLOAT) ( (parameters (parameter (expression (value (column (name commission_pct)))))) )))) != (expression (value (column (name BINARY_FLOAT_NAN)))))))))", t.toStringTree(p));
+    assertEquals("(select (query (select_clause SELECT (select_elements (select_element (expression (value (function (name COUNT) ( (parameters (parameter (expression (value (column (name *)))))) ))))))) (from_clause FROM (from_elements (from_element (table (name employees))))) (where_clause WHERE (condition (comparison (expression (value (function (name TO_BINARY_FLOAT) ( (parameters (parameter (expression (value (column (name commission_pct)))))) )))) != (expression (value (column (name BINARY_FLOAT_NAN)))))))))", t.toStringTree(p));
   }
 
   @Test
   public void parseSelect03() {
     SqlParser p = parse("select ins_id, ins_id_typ, ins_src_nme, ins_id as alt_ins_id, ins_id_typ as alt_ins_id_typ from rds_set_isincusip where dr = 1 group by ins_id, ins_id_typ, ins_src_nme");
     ParseTree t = p.select();
-    assertEquals("(select (simple (select_clause select (select_elements (select_element (expression (value (column (name ins_id))))) , (select_element (expression (value (column (name ins_id_typ))))) , (select_element (expression (value (column (name ins_src_nme))))) , (select_element (expression (value (column (name ins_id)))) as (column_alias (name alt_ins_id))) , (select_element (expression (value (column (name ins_id_typ)))) as (column_alias (name alt_ins_id_typ))))) (from_clause from (from_elements (from_element (table (name rds_set_isincusip))))) (where_clause where (condition (comparison (expression (value (column (name dr)))) = (expression (value (numeric 1)))))) (group_by_clause group by (expression (value (column (name ins_id)))) , (expression (value (column (name ins_id_typ)))) , (expression (value (column (name ins_src_nme)))))))", t.toStringTree(p));
+    assertEquals("(select (query (select_clause select (select_elements (select_element (expression (value (column (name ins_id))))) , (select_element (expression (value (column (name ins_id_typ))))) , (select_element (expression (value (column (name ins_src_nme))))) , (select_element (expression (value (column (name ins_id)))) as (column_alias (name alt_ins_id))) , (select_element (expression (value (column (name ins_id_typ)))) as (column_alias (name alt_ins_id_typ))))) (from_clause from (from_elements (from_element (table (name rds_set_isincusip))))) (where_clause where (condition (comparison (expression (value (column (name dr)))) = (expression (value (numeric 1)))))) (group_by_clause group by (expression (value (column (name ins_id)))) , (expression (value (column (name ins_id_typ)))) , (expression (value (column (name ins_src_nme)))))))", t.toStringTree(p));
   }
 
   // TODO SELECT COUNT(*) FROM employees WHERE salary < BINARY_FLOAT_INFINITY
