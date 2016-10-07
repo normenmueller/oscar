@@ -1,5 +1,7 @@
 # TODO
 
+- Unfold `string[String k] : …`
+
 - Disambiguate functions (e.g. aggregate, analytic, ...)? (Cf. goo.gl/6ucfJD)
 
 - Re-assess

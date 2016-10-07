@@ -1,4 +1,4 @@
-package mdpm.sql.oscar;
+package mdpm.oscar;
 
 import static org.junit.Assert.*;
 
@@ -6,7 +6,7 @@ import org.antlr.v4.runtime.tree.ParseTree;
 import org.junit.Ignore;
 import org.junit.Test;
 
-import mdpm.sql.oscar.g.SqlParser;
+import mdpm.oscar.g.SqlParser;
 
 public class ConditionalTest extends SqlParserTest {
 
@@ -169,14 +169,14 @@ public class ConditionalTest extends SqlParserTest {
     // original: SqlParser p = parse("         cust_address_typ('8768 N State Rd 37', 47404, 'Bloomington', 'IN', 'US') MEMBER OF cust_address_ntab");
                  SqlParser p = parse("aPackage.cust_address_typ('8768 N State Rd 37', 47404, 'Bloomington', 'IN', 'US') MEMBER OF cust_address_ntab");
     ParseTree t = p.condition();
-    assertEquals("(condition (expression (value (function (name (pkg aPackage) . cust_address_typ) ( (parameters (parameter (expression (value (string '8768 N State Rd 37')))) , (parameter (expression (value (numeric 47404)))) , (parameter (expression (value (string 'Bloomington')))) , (parameter (expression (value (string 'IN')))) , (parameter (expression (value (string 'US'))))) )))) MEMBER OF (table_alias (name cust_address_ntab)))", t.toStringTree(p));
+    assertEquals("(condition (expression (value (function (name (pkg aPackage) . cust_address_typ) ( (parameters (parameter (expression (value (string '8768 N State Rd 37')))) , (parameter (expression (value (numeric 47404)))) , (parameter (expression (value (string 'Bloomington')))) , (parameter (expression (value (string 'IN')))) , (parameter (expression (value (string 'US'))))) )))) MEMBER OF (alias (name cust_address_ntab)))", t.toStringTree(p));
   }
 
   @Test
   public void parseConditional24() {
     SqlParser p = parse("cust_address_ntab SUBMULTISET OF cust_address2_ntab");
     ParseTree t = p.condition();
-    assertEquals("(condition (expression (value (column (name cust_address_ntab)))) SUBMULTISET OF (table_alias (name cust_address2_ntab)))", t.toStringTree(p));
+    assertEquals("(condition (expression (value (column (name cust_address_ntab)))) SUBMULTISET OF (alias (name cust_address2_ntab)))", t.toStringTree(p));
   }
 
   @Test

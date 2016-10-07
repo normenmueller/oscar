@@ -1,4 +1,4 @@
-package mdpm.sql.oscar;
+package mdpm.oscar;
 
 import org.antlr.v4.runtime.*;
 

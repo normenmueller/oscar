@@ -1,11 +1,11 @@
-package mdpm.sql.oscar;
+package mdpm.oscar;
 
 import static org.junit.Assert.*;
 
 import org.antlr.v4.runtime.tree.ParseTree;
 import org.junit.Test;
 
-import mdpm.sql.oscar.g.SqlParser;
+import mdpm.oscar.g.SqlParser;
 
 public class FunctionTest extends SqlParserTest {
 
@@ -300,7 +300,7 @@ public class FunctionTest extends SqlParserTest {
   public void parseFunctions42() {
     SqlParser p = parse("NVL(A.attribute_str_value, ROUND(A.attribute_num_value),4)");
     ParseTree t = p.expression();
-    assertEquals("(expression (value (function (name NVL) ( (parameters (parameter (expression (value (column (table_alias (name A)) . (name attribute_str_value))))) , (parameter (expression (value (function (name ROUND) ( (parameters (parameter (expression (value (column (table_alias (name A)) . (name attribute_num_value)))))) ))))) , (parameter (expression (value (numeric 4))))) ))))", t.toStringTree(p));
+    assertEquals("(expression (value (function (name NVL) ( (parameters (parameter (expression (value (column (alias (name A)) . (name attribute_str_value))))) , (parameter (expression (value (function (name ROUND) ( (parameters (parameter (expression (value (column (alias (name A)) . (name attribute_num_value)))))) ))))) , (parameter (expression (value (numeric 4))))) ))))", t.toStringTree(p));
   }
 
   @Test
@@ -314,7 +314,7 @@ public class FunctionTest extends SqlParserTest {
   public void parseFunctions44() {
     SqlParser p = parse("CAST(s.addresses AS address_book_t)");
     ParseTree t = p.expression();
-    assertEquals("(expression (value (function (name CAST) ( (parameters (parameter (expression (value (column (table_alias (name s)) . (name addresses)))) AS (alias (name address_book_t)))) ))))", t.toStringTree(p));
+    assertEquals("(expression (value (function (name CAST) ( (parameters (parameter (expression (value (column (alias (name s)) . (name addresses)))) AS (alias (name address_book_t)))) ))))", t.toStringTree(p));
   }
 
   @Test
@@ -636,7 +636,7 @@ public class FunctionTest extends SqlParserTest {
   public void parseFunctions90() {
     SqlParser p = parse("XMLELEMENT('Department', XMLAGG(XMLELEMENT('Employee', e.job_id||' '||e.last_name) ORDER BY last_name))");
     ParseTree t = p.expression();
-    assertEquals("(expression (value (function (name XMLELEMENT) ( (parameters (parameter (expression (value (string 'Department')))) , (parameter (expression (value (function (name XMLAGG) ( (parameters (parameter (expression (value (function (name XMLELEMENT) ( (parameters (parameter (expression (value (string 'Employee')))) , (parameter (expression (expression (expression (value (column (table_alias (name e)) . (name job_id)))) || (expression (value (string ' ')))) || (expression (value (column (table_alias (name e)) . (name last_name))))))) )))) (order_by_clause ORDER BY (expression (value (column (name last_name))))))) )))))) ))))", t.toStringTree(p));
+    assertEquals("(expression (value (function (name XMLELEMENT) ( (parameters (parameter (expression (value (string 'Department')))) , (parameter (expression (value (function (name XMLAGG) ( (parameters (parameter (expression (value (function (name XMLELEMENT) ( (parameters (parameter (expression (value (string 'Employee')))) , (parameter (expression (expression (expression (value (column (alias (name e)) . (name job_id)))) || (expression (value (string ' ')))) || (expression (value (column (alias (name e)) . (name last_name))))))) )))) (order_by_clause ORDER BY (expression (value (column (name last_name))))))) )))))) ))))", t.toStringTree(p));
   }
 
   @Test
@@ -678,7 +678,7 @@ public class FunctionTest extends SqlParserTest {
     //{
     //SqlParser p = parse("tAlias.aObject.aAttribute.aMethod('aString')");
     //ParseTree t = p.expression();
-    //assertEquals("(expression (object_access_expression (table_alias tAlias) . (object aObject) . (attribute aAttribute) . (method (name aMethod) ( (parameters (parameter (expression (value (string 'aString'))))) ))))", t.toStringTree(p));
+    //assertEquals("(expression (object_access_expression (alias tAlias) . (object aObject) . (attribute aAttribute) . (method (name aMethod) ( (parameters (parameter (expression (value (string 'aString'))))) ))))", t.toStringTree(p));
     //}
 
     //{

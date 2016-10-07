@@ -1,11 +1,11 @@
-package mdpm.sql.oscar;
+package mdpm.oscar;
 
 import static org.junit.Assert.*;
 
 import org.antlr.v4.runtime.tree.ParseTree;
 import org.junit.Test;
 
-import mdpm.sql.oscar.g.SqlParser;
+import mdpm.oscar.g.SqlParser;
 
 public class SelectTest extends SqlParserTest {
 
@@ -27,7 +27,7 @@ public class SelectTest extends SqlParserTest {
   public void parseSelect03() {
     SqlParser p = parse("select ins_id, ins_id_typ, ins_src_nme, ins_id as alt_ins_id, ins_id_typ as alt_ins_id_typ from rds_set_isincusip where dr = 1 group by ins_id, ins_id_typ, ins_src_nme");
     ParseTree t = p.select();
-    assertEquals("(select (subselect (query (select_clause select (select_elements (select_element (expression (value (column (name ins_id))))) , (select_element (expression (value (column (name ins_id_typ))))) , (select_element (expression (value (column (name ins_src_nme))))) , (select_element (expression (value (column (name ins_id)))) as (column_alias (name alt_ins_id))) , (select_element (expression (value (column (name ins_id_typ)))) as (column_alias (name alt_ins_id_typ))))) (from_clause from (from_elements (from_element (table (name rds_set_isincusip))))) (where_clause where (condition (comparison (expression (value (column (name dr)))) = (expression (value (numeric 1)))))) (group_by_clause group by (expression (value (column (name ins_id)))) , (expression (value (column (name ins_id_typ)))) , (expression (value (column (name ins_src_nme))))))))", t.toStringTree(p));
+    assertEquals("(select (subselect (query (select_clause select (select_elements (select_element (expression (value (column (name ins_id))))) , (select_element (expression (value (column (name ins_id_typ))))) , (select_element (expression (value (column (name ins_src_nme))))) , (select_element (expression (value (column (name ins_id)))) as (alias (name alt_ins_id))) , (select_element (expression (value (column (name ins_id_typ)))) as (alias (name alt_ins_id_typ))))) (from_clause from (from_elements (from_element (table (name rds_set_isincusip))))) (where_clause where (condition (comparison (expression (value (column (name dr)))) = (expression (value (numeric 1)))))) (group_by_clause group by (expression (value (column (name ins_id)))) , (expression (value (column (name ins_id_typ)))) , (expression (value (column (name ins_src_nme))))))))", t.toStringTree(p));
   }
 
   // TODO SELECT COUNT(*) FROM employees WHERE salary < BINARY_FLOAT_INFINITY

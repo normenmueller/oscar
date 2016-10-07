@@ -1,9 +1,9 @@
-package mdpm.sql.oscar;
+package mdpm.oscar;
 
 import org.antlr.v4.runtime.*;
 import org.antlr.v4.runtime.tree.*;
 
-import mdpm.sql.oscar.g.SqlLexer;
+import mdpm.oscar.g.SqlLexer;
 
 public abstract class SqlParser {
 
@@ -13,7 +13,7 @@ public abstract class SqlParser {
     lexer.removeErrorListeners();
     lexer.addErrorListener(SqlParserErrorListener.INSTANCE);
 
-    mdpm.sql.oscar.g.SqlParser parser = new mdpm.sql.oscar.g.SqlParser(new CommonTokenStream(lexer));
+    mdpm.oscar.g.SqlParser parser = new mdpm.oscar.g.SqlParser(new CommonTokenStream(lexer));
     parser.removeErrorListeners();
     parser.addErrorListener(SqlParserErrorListener.INSTANCE);
 
