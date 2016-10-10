@@ -505,7 +505,7 @@ windowing_clause
 
 // Case {{{3
 case_expression
-  : CASE expression (WHEN (comparison|'('subselect')') THEN (expression|'('subselect')'))+ (ELSE (expression|'('subselect')'))? END # SimpleCaseExp
+  : CASE expression (WHEN (expression|'('subselect')') THEN (expression|'('subselect')'))+ (ELSE (expression|'('subselect')'))? END # SimpleCaseExp
   | CASE (WHEN condition THEN (expression|'('subselect')'))+ (ELSE (expression|'('subselect')'))? END # SearchedCaseExp
   ;
 
