@@ -1,4 +1,4 @@
-package mdpm.sql.oscar;
+package mdpm.oscar;
 
 import java.io.BufferedReader;
 import java.io.FileReader;
@@ -9,8 +9,8 @@ import java.io.IOException;
 import org.antlr.v4.runtime.ANTLRInputStream;
 import org.antlr.v4.runtime.CommonTokenStream;
 
-import mdpm.sql.oscar.g.SqlLexer;
-import mdpm.sql.oscar.g.SqlParser;
+import mdpm.oscar.g.SqlLexer;
+import mdpm.oscar.g.SqlParser;
 
 public abstract class SqlParserTest {
 

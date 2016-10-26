@@ -1,4 +1,4 @@
-package mdpm.sql.oscar;
+package mdpm.oscar;
 
 import java.util.concurrent.CancellationException;
 import org.antlr.v4.runtime.*;

@@ -1,6 +1,6 @@
 /*******************************************************************************\
  * Name:              Oracle(c) SQL 11g R2 grammar                             *
- * version:           0.1.1                                                    *
+ * version:           0.1.2                                                    *
  * synopsis:          n/a                                                      *
  * description:       Please see README.md                                     *
  * homepage:          https://github.com/normenmueller/parser-sql              *
@@ -27,9 +27,9 @@ subselect
   ;
 
 query
-  : '(' query ')'
-  | query (UNION ALL?|INTERSECT|MINUS) query
-  | factoring_clause? select_clause from_clause where_clause? hierarchical_query_clause? group_by_clause? model_clause? 
+  : '(' query ')' # ParenthesizedQuery
+  | query (UNION ALL?|INTERSECT|MINUS) query # CompoundQuery
+  | factoring_clause? select_clause from_clause where_clause? hierarchical_query_clause? group_by_clause? model_clause? # SimpleQuery
   ;
 
 // Subquery factoring clause {{{3
@@ -38,13 +38,13 @@ factoring_clause
   ;
 
 factoring_element
-  : name '(' column_alias (',' column_alias)* ')' AS '(' subselect ')' search_clause? cycle_clause?
+  : name '(' alias (',' alias)* ')' AS '(' subselect ')' search_clause? cycle_clause?
   | name AS '(' subselect ')' search_clause? cycle_clause?
   ;
 
 // Search clause {{{4
 search_clause
-  : SEARCH (DEPTH|BREADTH) FIRST BY search_elements SET column_alias
+  : SEARCH (DEPTH|BREADTH) FIRST BY search_elements SET alias
   ;
 
 search_elements
@@ -52,12 +52,12 @@ search_elements
   ;
 
 search_element
-  : column_alias (ASC|DESC)? (NULLS (FIRST|LAST))?
+  : alias (ASC|DESC)? (NULLS (FIRST|LAST))?
   ;
 
 // Cycle clause {{{4
 cycle_clause
-  : CYCLE cycle_elements SET column_alias TO expression DEFAULT expression
+  : CYCLE cycle_elements SET alias TO expression DEFAULT expression
   ;
 
 cycle_elements
@@ -65,7 +65,7 @@ cycle_elements
   ;
 
 cycle_element
-  : column_alias
+  : alias
   ;
 
 // Select clause {{{3
@@ -77,9 +77,9 @@ select_elements
   : select_element (',' select_element)*
   ; 
 
-select_element
-  : expression (AS? column_alias)?
-  | '(' subselect ')' (AS? column_alias)?
+select_element                             
+  : expression (AS? alias)? # SelectElementExp
+  | '(' subselect ')' (AS? alias)? # SelectElementSub
   ;
 
 // From clause {{{3
@@ -103,11 +103,16 @@ table
       '(' subselect (WITH (READ ONLY|CHECK OPTION) (CONSTRAINT name)?)? ')'
     | ((schema '.')? name) (partition_extension_clause|'@' dblink)? sample_clause?
     | table_collection_expression
-    ) ')' flashback_query_clause? table_alias?
+    ) ')' flashback_query_clause? alias?
   | ( '(' subselect (WITH (READ ONLY|CHECK OPTION) (CONSTRAINT name)?)? ')'
     | ((schema '.')? name) (partition_extension_clause|'@' dblink)? sample_clause?
     | table_collection_expression
-    ) (pivot_clause|unpivot_clause)? flashback_query_clause? table_alias?
+    ) (pivot_clause|unpivot_clause)? flashback_query_clause? alias?
+  ;
+
+// Table collection {{{5
+table_collection_expression
+  : (TABLE|THE) '(' (subselect|expression) ')' ('(' '+' ')')?
   ;
 
 // Pivot clause {{{5
@@ -120,7 +125,7 @@ pivot_elements
   ;
 
 pivot_element
-  : function (AS? column_alias)?
+  : function (AS? alias)?
   ;
 
 pivot_for_clause
@@ -129,7 +134,7 @@ pivot_for_clause
 
 pivot_in_clause
   : IN '(' subselect ')'
-  | IN '(' expression (AS? column_alias)? (',' expression (AS? column_alias)?)* ')'
+  | IN '(' expression (AS? alias)? (',' expression (AS? alias)?)* ')'
   ;
 
 unpivot_clause
@@ -137,7 +142,7 @@ unpivot_clause
   ;
 
 unpivot_in_clause
-  : IN '(' expression (AS? column_alias)? (',' expression (AS? column_alias)?)* ')'
+  : IN '(' expression (AS? alias)? (',' expression (AS? alias)?)* ')'
   ;
 
 flashback_query_clause
@@ -151,10 +156,6 @@ sample_clause
 
 partition_extension_clause
   : (SUBPARTITION|PARTITION) FOR? '(' expression (',' expression)* ')'
-  ;
-
-table_collection_expression
-  : (TABLE|THE) '(' (subselect|expression) ')' ('(' '+' ')')?
   ;
 
 // Join clause {{{4
@@ -229,15 +230,15 @@ model_column_clauses
   ;
 
 model_partition_clause
-  : PARTITION BY '(' expression column_alias? (',' expression column_alias?)* ')'
+  : PARTITION BY '(' expression alias? (',' expression alias?)* ')'
   ;
 
 model_dimension_clause
-  : DIMENSION BY '(' expression column_alias? (',' expression column_alias?)* ')'
+  : DIMENSION BY '(' expression alias? (',' expression alias?)* ')'
   ;
 
 model_measures_clause
-  : MEASURES '(' expression column_alias? (',' expression column_alias?)* ')'
+  : MEASURES '(' expression alias? (',' expression alias?)* ')'
   ;
 
 // Model rules clause {{{5
@@ -373,7 +374,7 @@ expression
   ;
 
 // TODO object_access_expression
-// TODO   : ( table_alias '.' object '.' | '(' expression ')' '.') (attribute ('.' attribute)* '.')? method 
+// TODO   : ( alias '.' object '.' | '(' expression ')' '.') (attribute ('.' attribute)* '.')? method 
 // TODO   ;
 // TODO 
 // TODO method
@@ -431,7 +432,7 @@ sequence
 
 // Column reference {{{4
 column
-  : ((schema '.')? table_alias '.')? name
+  : ((schema '.')? alias '.')? name
   ;
 
 // Function {{{4
@@ -465,7 +466,7 @@ cost_matrix_clause
   ;
 
 using_clause
-  : USING (CHAR_CS | NCHAR_CS | ((schema '.')? table_alias '.')? '*' | expression (AS alias)?)
+  : USING (CHAR_CS | NCHAR_CS | ((schema '.')? alias '.')? '*' | expression (AS alias)?)
   ;
 
 // Function restrictions {{{5
@@ -504,8 +505,8 @@ windowing_clause
 
 // Case {{{3
 case_expression
-  : CASE expression (WHEN (comparison|'('subselect')') THEN (expression|'('subselect')'))+ (ELSE (expression|'('subselect')'))? END
-  | CASE (WHEN condition THEN (expression|'('subselect')'))+ (ELSE (expression|'('subselect')'))? END
+  : CASE expression (WHEN (expression|'('subselect')') THEN (expression|'('subselect')'))+ (ELSE (expression|'('subselect')'))? END # SimpleCaseExp
+  | CASE (WHEN condition THEN (expression|'('subselect')'))+ (ELSE (expression|'('subselect')'))? END # SearchedCaseExp
   ;
 
 // Conditions {{{2
@@ -518,7 +519,7 @@ condition
   | comparison
   | expression NOT? BETWEEN expression AND expression
   | expression NOT? IN ('(' subselect ')'| expression)
-  | expression NOT? (MEMBER|SUBMULTISET) OF? table_alias
+  | expression NOT? (MEMBER|SUBMULTISET) OF? alias
   | ('(' subselect ')'|expression) IS NOT? (ANY|NAN|INFINITE|NULL|PRESENT|ASET|EMPTY|/*OF datatype*/)
   | expression NOT? (LIKE|LIKEC|LIKE2|LIKE4) expression (ESCAPE expression)?
   | NOT condition
@@ -544,8 +545,6 @@ query_partition_clause
   ;
 
 alias        : name ;
-table_alias  : name ;
-column_alias : name ;
 attribute    : name ;
 connection   : name ;
 database     : name ;

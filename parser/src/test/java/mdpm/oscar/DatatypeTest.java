@@ -1,4 +1,4 @@
-package mdpm.sql.oscar;
+package mdpm.oscar;
 
 import static org.junit.Assert.*;
 

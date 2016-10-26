@@ -1,11 +1,11 @@
-package mdpm.sql.oscar;
+package mdpm.oscar;
 
 import static org.junit.Assert.*;
 
 import org.antlr.v4.runtime.tree.ParseTree;
 import org.junit.Test;
 
-import mdpm.sql.oscar.g.SqlParser;
+import mdpm.oscar.g.SqlParser;
 
 public class ConnectionalTest extends SqlParserTest {
 
