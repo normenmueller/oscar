@@ -1114,7 +1114,13 @@ SCIENTIFIC_LITERAL
   : (INTEGER_LITERAL? '.' [0-9]+ | INTEGER_LITERAL) ([eE] ('+'|'-')? (INTEGER_LITERAL? '.' [0-9]+ | INTEGER_LITERAL))? ([dD] | [fF])?
   ;
 
-// Quoted and nonquoted identifier
+//MONTH
+//DAY
+//YEAR
+//WEEK
+//DATE_FORMAT
+//TIME_FORMAT
+
 ID
   : LETTER (LETTER|DIGIT)* 
   | '"' .+? '"'
